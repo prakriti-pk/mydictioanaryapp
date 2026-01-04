@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shared Lexicon</title>
+    <style>
+        :root {
+            /* --- Color Palette --- */
+            --c-off-white: #EAEAEA; /* Light Background */
+            --c-coral: #FF2E63;     /* Primary Action */
+            --c-blue: #171b21;      /* Main Text / Dark BG */
+            --c-purple: #06aba8;    /* Accents */
+
+            /* --- Light Mode Variables --- */
+            --bg-color: var(--c-off-white);
+            --card-bg: #ffffff;
+            --text-main: var(--c-blue);
+            --text-muted: #6b7280;
+            --modal-overlay: rgba(31, 60, 136, 0.4); /* Blue tint overlay */
+            --border-color: #e5e7eb;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(31, 60, 136, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(31, 60, 136, 0.15);
+
+            /* --- UI Elements --- */
+            --primary-btn: var(--c-coral);
+            --primary-btn-hover: var(--c-coral);
+            --accent-tag: rgba(128, 112, 213, 0.1); /* Purple tint */
+            --accent-text: var(--c-purple);
+        }
+
+        /* --- Dark Mode Variables --- */
+        body.dark-mode {
+            --bg-color: var(--c-blue);
+            --card-bg: #252A34; /* Lighter blue for cards */
+            --text-main: var(--c-off-white);
+            --text-muted: #06aba8;
+            --modal-overlay: rgba(0, 0, 0, 0.8);
+            --border-color: #4b586b;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+            --accent-tag: rgba(238, 111, 87, 0.15); /* Coral tint for tags */
+            --accent-text: var(--c-coral);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* --- Header --- */
+        header {
+            background-color: var(--card-bg);
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow-sm);
+            z-index: 10;
+            transition: background-color 0.3s;
+        }
+
+        .search-container {
+            flex: 1;
+            margin-right: 1rem;
+            position: relative;
+        }
+
+        .search-container input {
+            width: 100%;
+            padding: 0.6rem 1rem 0.6rem 2.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            font-size: 1rem;
+            outline: none;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            transition: border-color 0.2s;
+        }
+
+        .search-container input:focus { border-color: var(--primary-btn); }
+
+        .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        .header-controls { display: flex; align-items: center; gap: 0.5rem; }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 8px;
+            border-radius: 50%;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-btn:hover {
+            background-color: rgba(0,0,0,0.05);
+            color: var(--primary-btn);
+        }
+        body.dark-mode .icon-btn:hover { background-color: rgba(255,255,255,0.1); }
+
+        /* --- Sort Bar --- */
+        .sort-bar {
+            background-color: var(--card-bg);
+            padding: 0.5rem 1rem;
+            display: flex;
+            gap: 1rem;
+            overflow-x: auto;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.85rem;
+            white-space: nowrap;
+            scrollbar-width: none;
+        }
+        .sort-bar::-webkit-scrollbar { display: none; }
+
+        .sort-option {
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: #c6c6c6;
+            transition: all 0.2s;
+        }
+
+        .sort-option.active {
+            color: var(--primary-btn);
+            font-weight: 600;
+            background-color: rgba(238, 111, 87, 0.1);
+        }
+
+        /* --- Main List --- */
+        main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            padding-bottom: 5rem;
+        }
+
+        .word-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .word-card {
+            background: var(--card-bg);
+            padding: 1rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow-sm);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s, border-left 0.2s;
+            position: relative;
+            user-select: none;
+            border-left: 4px solid transparent;
+        }
+
+        .word-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-left-color: var(--primary-btn);
+        }
+
+        .word-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 0.25rem;
+        }
+
+        .word-title { font-size: 1.1rem; font-weight: 700; color: var(--text-main); }
+
+        .word-type {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            background-color: var(--accent-tag);
+            color: var(--accent-text);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .word-meaning {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-muted);
+            margin-top: 3rem;
+        }
+
+        /* --- Floating Action Button --- */
+        .fab {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 60px;
+            height: 60px;
+            background-color: var(--primary-btn);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-lg);
+            cursor: pointer;
+            font-size: 2rem;
+            border: none;
+            transition: transform 0.3s;
+            z-index: 50;
+        }
+        .fab:hover { transform: rotate(90deg) scale(1.05); background-color: var(--primary-btn-hover); }
+        .fab:active { transform: scale(0.95); }
+
+        /* --- Modals --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--modal-overlay);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s;
+            padding: 1rem;
+        }
+
+        .modal-overlay.open { opacity: 1; visibility: visible; }
+
+        .modal-content {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            flex-direction: column;
+            transform: translateY(20px);
+            transition: transform 0.3s;
+            overflow: hidden;
+            color: var(--text-main);
+        }
+
+        .modal-overlay.open .modal-content { transform: translateY(0); }
+
+        .modal-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 { font-size: 1.25rem; }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+        }
+
+        .modal-body { padding: 1.5rem; overflow-y: auto; }
+
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            background-color: var(--bg-color);
+        }
+
+        /* --- Forms --- */
+        .form-group { margin-bottom: 1rem; }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.4rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-main);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.6rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 1rem;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+        }
+
+        .form-control:focus { outline: none; border-color: var(--primary-btn); }
+        textarea.form-control { resize: vertical; min-height: 80px; }
+
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-primary { background-color: var(--primary-btn); color: white; }
+        .btn-primary:hover { background-color: var(--primary-btn-hover); }
+
+        .btn-secondary { background-color: var(--border-color); color: var(--text-main); }
+        .btn-secondary:hover { opacity: 0.8; }
+
+        .btn-danger { background-color: #ef4444; color: white; }
+        .btn-danger:hover { background-color: #dc2626; }
+
+        /* --- View Details --- */
+        .detail-row { margin-bottom: 1rem; }
+        .detail-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.25rem;
+        }
+        .detail-value { font-size: 1rem; line-height: 1.5; }
+        .detail-value.mono {
+            font-family: 'Courier New', Courier, monospace;
+            background: rgba(0,0,0,0.05);
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+        body.dark-mode .detail-value.mono { background: rgba(255,255,255,0.1); }
+
+        /* --- Context Menu --- */
+        #context-menu {
+            position: absolute;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-lg);
+            border-radius: 8px;
+            padding: 0.5rem 0;
+            z-index: 200;
+            min-width: 150px;
+            display: none;
+            color: var(--text-main);
+        }
+
+        .context-item {
+            padding: 0.6rem 1rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .context-item:hover { background-color: rgba(0,0,0,0.05); color: var(--accent-text); }
+        .context-item.delete { color: #ef4444; }
+        .context-item.delete:hover { background-color: rgba(239, 68, 68, 0.1); }
+
+        /* --- Toast --- */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background-color: #1f2937;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            z-index: 300;
+            box-shadow: var(--shadow-md);
+            white-space: nowrap;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    </style>
+
+    <!-- Firebase SDKs (Compat Version) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="search-container">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" placeholder="Search words...">
+        </div>
+        <div class="header-controls">
+            <!-- Theme Toggle -->
+            <button class="icon-btn" id="themeToggle" title="Toggle Theme">
+                <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+            </button>
+            <!-- Home Button -->
+            <button class="icon-btn" id="homeBtn" title="Home">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Sort Controls -->
+    <div class="sort-bar">
+        <div class="sort-option active" data-sort="az">A-Z</div>
+        <div class="sort-option" data-sort="created">Date Created</div>
+        <div class="sort-option" data-sort="modified">Date Modified</div>
+    </div>
+
+    <!-- Main Content -->
+    <main>
+        <div id="wordList" class="word-list">
+            <!-- Items rendered by JS -->
+        </div>
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <h3>You Cannot Add Words Right Now;</h3>
+            <p>In order to store words, pls connect your database with Google's Firebase'</p>
+        </div>
+    </main>
+
+    <!-- Floating Action Button -->
+    <button class="fab" id="addWordBtn" aria-label="Add Word">+</button>
+
+    <!-- Form Modal -->
+    <div class="modal-overlay" id="formModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="formTitle">Add New Word</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="wordForm">
+                    <input type="hidden" id="wordId">
+
+                    <div class="form-group">
+                        <label for="wordInput">Word <span style="color:var(--primary-btn)">*</span></label>
+                        <input type="text" id="wordInput" class="form-control" required placeholder="e.g., Serendipity">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="meaningInput">Meaning <span style="color:var(--primary-btn)">*</span></label>
+                        <textarea id="meaningInput" class="form-control" required placeholder="Definition..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="typeInput">Type</label>
+                        <select id="typeInput" class="form-control">
+                            <option value="">Select...</option>
+                            <option value="Noun">Noun</option>
+                            <option value="Pronoun">Pronoun</option>
+                            <option value="Verb">Verb</option>
+                            <option value="Adjective">Adjective</option>
+                            <option value="Adverb">Adverb</option>
+                            <option value="Preposition">Preposition</option>
+                            <option value="Conjunction">Conjunction</option>
+                            <option value="Interjection">Interjection</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="synonymsInput">Synonyms</label>
+                        <input type="text" id="synonymsInput" class="form-control" placeholder="e.g., joy, happiness">
+                    </div>
+                    <div class="form-group">
+                        <label for="antonymsInput">Antonyms</label>
+                        <input type="text" id="antonymsInput" class="form-control" placeholder="e.g., sadness, sorrow">
+                    </div>
+                    <div class="form-group">
+                        <label for="sentenceInput">Sentence</label>
+                        <input type="text" id="sentenceInput" class="form-control" placeholder="Example usage...">
+                    </div>
+                    <div class="form-group">
+                        <label for="descInput">Description</label>
+                        <textarea id="descInput" class="form-control" style="min-height: 60px;" placeholder="Notes..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary close-modal-btn">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveWordBtn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Modal -->
+    <div class="modal-overlay" id="viewModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="viewWordTitle">Word</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-row">
+                    <div class="detail-label">Meaning</div>
+                    <div class="detail-value" id="viewMeaning"></div>
+                </div>
+                <div class="detail-row" id="viewTypeRow">
+                    <div class="detail-label">Type</div>
+                    <div class="detail-value mono" id="viewType"></div>
+                </div>
+                <div class="detail-row" id="viewSynonymsRow" style="display:none;">
+                    <div class="detail-label">Synonyms</div>
+                    <div class="detail-value" id="viewSynonyms"></div>
+                </div>
+                <div class="detail-row" id="viewAntonymsRow" style="display:none;">
+                    <div class="detail-label">Antonyms</div>
+                    <div class="detail-value" id="viewAntonyms"></div>
+                </div>
+                <div class="detail-row" id="viewSentenceRow" style="display:none;">
+                    <div class="detail-label">Sentence</div>
+                    <div class="detail-value" style="font-style: italic;" id="viewSentence"></div>
+                </div>
+                <div class="detail-row" id="viewDescRow" style="display:none;">
+                    <div class="detail-label">Description</div>
+                    <div class="detail-value" id="viewDesc"></div>
+                </div>
+            </div>
+            <div class="modal-footer" style="justify-content: space-between;">
+                <button type="button" class="btn btn-danger" id="deleteWordBtn">Delete</button>
+                <div>
+                    <button type="button" class="btn btn-secondary close-modal-btn">Close</button>
+                    <button type="button" class="btn btn-primary" id="editWordBtn">Edit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div id="context-menu">
+        <div class="context-item" id="ctxEdit"><span>✏️</span> Edit</div>
+        <div class="context-item delete" id="ctxDelete"><span>🗑️</span> Delete</div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast">Action Successful</div>
+
+    <script>
+        // --- 1. PASTE YOUR FIREBASE CONFIG HERE ---
+        const firebaseConfig = {
+    apiKey: "whatever",
+    authDomain: "whatever",
+    projectId: "ramjane",
+    storageBucket: "whatever",
+    messagingSenderId: "whatever",
+    appId: "whatever",
+    measurementId: "whatever"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // --- State & DOM ---
+        let words = [];
+        let currentSort = 'az';
+        let searchQuery = '';
+        let currentSelectedId = null;
+        let longPressTimer;
+
+        const wordListEl = document.getElementById('wordList');
+        const emptyStateEl = document.getElementById('emptyState');
+        const searchInput = document.getElementById('searchInput');
+        const homeBtn = document.getElementById('homeBtn');
+        const themeToggle = document.getElementById('themeToggle');
+        const toast = document.getElementById('toast');
+
+        const formModal = document.getElementById('formModal');
+        const viewModal = document.getElementById('viewModal');
+        const closeButtons = document.querySelectorAll('.close-modal, .close-modal-btn');
+        const saveWordBtn = document.getElementById('saveWordBtn');
+        const deleteWordBtn = document.getElementById('deleteWordBtn');
+        const editWordBtn = document.getElementById('editWordBtn');
+
+        const contextMenu = document.getElementById('context-menu');
+
+        // --- Icons SVGs ---
+        const sunIcon = `<svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`;
+        const moonIcon = `<svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+
+        // --- Initialization ---
+        window.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            loadWordsFromFirebase();
+        });
+
+        // --- Theme Logic (Local Storage Only) ---
+        function initTheme() {
+            const savedTheme = localStorage.getItem('lexicon_theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                themeToggle.innerHTML = moonIcon;
+            } else {
+                themeToggle.innerHTML = sunIcon;
+            }
+        }
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            themeToggle.innerHTML = isDark ? moonIcon : sunIcon;
+            localStorage.setItem('lexicon_theme', isDark ? 'dark' : 'light');
+        });
+
+        // --- Firebase Data Logic ---
+        function loadWordsFromFirebase() {
+            const wordsRef = database.ref('words');
+            wordsRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                words = []; // Reset local array
+
+                if (data) {
+                    Object.keys(data).forEach((key) => {
+                        const word = data[key];
+                        word.id = key; // Use Firebase key as ID
+                        words.push(word);
+                    });
+                }
+                renderList();
+            });
+        }
+
+        function addWord(wordObj) {
+            database.ref('words').push(wordObj)
+                .then(() => showToast('Word added'))
+                .catch(err => alert(err));
+        }
+
+        function updateWord(updatedWord) {
+            // ID must be the Firebase key
+            database.ref('words/' + updatedWord.id).update(updatedWord)
+                .then(() => {
+                    showToast('Word updated');
+                    if(viewModal.classList.contains('open')) openViewModal(updatedWord.id);
+                })
+                .catch(err => alert(err));
+        }
+
+        function removeWord(id) {
+            database.ref('words/' + id).remove()
+                .then(() => {
+                    showToast('Word deleted');
+                    closeModal(viewModal);
+                })
+                .catch(err => alert(err));
+        }
+
+        function getWord(id) {
+            return words.find(w => w.id === id);
+        }
+
+        // --- Rendering ---
+        function renderList() {
+            wordListEl.innerHTML = '';
+
+            // Filter
+            let displayWords = words.filter(w =>
+                w.word.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+
+            // Sort
+            displayWords.sort((a, b) => {
+                if (currentSort === 'az') return a.word.localeCompare(b.word);
+                if (currentSort === 'created') return b.created - a.created;
+                if (currentSort === 'modified') return b.modified - a.modified;
+            });
+
+            if (displayWords.length === 0) {
+                emptyStateEl.style.display = 'block';
+                emptyStateEl.querySelector('h3').textContent = searchQuery ? 'No results found' : 'No words found';
+            } else {
+                emptyStateEl.style.display = 'none';
+                displayWords.forEach(word => {
+                    const card = createWordCard(word);
+                    wordListEl.appendChild(card);
+                });
+            }
+        }
+
+        function createWordCard(word) {
+            const div = document.createElement('div');
+            div.className = 'word-card';
+            div.dataset.id = word.id;
+
+            const typeHtml = word.type ? `<span class="word-type">${word.type}</span>` : '';
+            div.innerHTML = `
+                <div class="word-header">
+                    <span class="word-title">${escapeHtml(word.word)}</span>
+                    ${typeHtml}
+                </div>
+                <div class="word-meaning">${escapeHtml(word.meaning)}</div>
+            `;
+
+            div.addEventListener('click', () => openViewModal(word.id));
+
+            // Context Menu Events
+            div.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                handleContextMenu(e, word.id);
+            });
+            div.addEventListener('touchstart', (e) => {
+                longPressTimer = setTimeout(() => {
+                    const touch = e.touches[0];
+                    handleContextMenu({ clientX: touch.clientX, clientY: touch.clientY, preventDefault: () => {} }, word.id);
+                }, 600);
+            });
+            div.addEventListener('touchend', () => clearTimeout(longPressTimer));
+            div.addEventListener('touchmove', () => clearTimeout(longPressTimer));
+
+            return div;
+        }
+
+        // --- Modals ---
+        function openModal(modal) {
+            modal.classList.add('open');
+            contextMenu.style.display = 'none';
+        }
+        function closeModal(modal) {
+            modal.classList.remove('open');
+            document.getElementById('wordForm').reset();
+            document.getElementById('wordId').value = '';
+        }
+
+        function openFormModal(id = null) {
+            document.getElementById('formTitle').textContent = id ? 'Edit Word' : 'Add New Word';
+            if (id) {
+                const word = getWord(id);
+                if (!word) return;
+                document.getElementById('wordId').value = word.id;
+                document.getElementById('wordInput').value = word.word;
+                document.getElementById('meaningInput').value = word.meaning;
+                document.getElementById('typeInput').value = word.type;
+                document.getElementById('synonymsInput').value = word.synonyms || '';
+                document.getElementById('antonymsInput').value = word.antonyms || '';
+                document.getElementById('sentenceInput').value = word.sentence || '';
+                document.getElementById('descInput').value = word.description || '';
+            }
+            openModal(formModal);
+        }
+
+        function openViewModal(id) {
+            const word = getWord(id);
+            if (!word) return;
+            currentSelectedId = id;
+
+            document.getElementById('viewWordTitle').textContent = word.word;
+            document.getElementById('viewMeaning').textContent = word.meaning;
+
+            const typeEl = document.getElementById('viewType');
+            const typeRow = document.getElementById('viewTypeRow');
+            if(word.type) {
+                typeEl.textContent = word.type;
+                typeRow.style.display = 'block';
+            } else {
+                typeRow.style.display = 'none';
+            }
+
+            const setVal = (id, rowId, val) => {
+                const r = document.getElementById(rowId);
+                if (val) {
+                    document.getElementById(id).textContent = val;
+                    r.style.display = 'block';
+                } else {
+                    r.style.display = 'none';
+                }
+            };
+
+            setVal('viewSynonyms', 'viewSynonymsRow', word.synonyms);
+            setVal('viewAntonyms', 'viewAntonymsRow', word.antonyms);
+            setVal('viewSentence', 'viewSentenceRow', word.sentence);
+            setVal('viewDesc', 'viewDescRow', word.description);
+
+            openModal(viewModal);
+        }
+
+        // --- Context Menu ---
+        function handleContextMenu(e, id) {
+            currentSelectedId = id;
+            contextMenu.style.display = 'block';
+            let x = e.clientX;
+            let y = e.clientY;
+            const rect = contextMenu.getBoundingClientRect();
+            if (x + rect.width > window.innerWidth) x -= rect.width;
+            if (y + rect.height > window.innerHeight) y -= rect.height;
+            contextMenu.style.left = `${x}px`;
+            contextMenu.style.top = `${y}px`;
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!contextMenu.contains(e.target)) contextMenu.style.display = 'none';
+        });
+
+        document.getElementById('ctxEdit').addEventListener('click', () => {
+            contextMenu.style.display = 'none';
+            if (currentSelectedId) openFormModal(currentSelectedId);
+        });
+
+        document.getElementById('ctxDelete').addEventListener('click', () => {
+            contextMenu.style.display = 'none';
+            if (currentSelectedId && confirm('Delete this word?')) {
+                removeWord(currentSelectedId);
+                currentSelectedId = null;
+            }
+        });
+
+        // --- Event Listeners ---
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value.trim();
+            renderList();
+        });
+        homeBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            searchQuery = '';
+            renderList();
+        });
+        document.querySelectorAll('.sort-option').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.sort-option').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentSort = btn.dataset.sort;
+                renderList();
+            });
+        });
+        document.getElementById('addWordBtn').addEventListener('click', () => openFormModal());
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                closeModal(formModal);
+                closeModal(viewModal);
+            });
+        });
+
+        saveWordBtn.addEventListener('click', () => {
+            const id = document.getElementById('wordId').value;
+            const wordVal = document.getElementById('wordInput').value.trim();
+            const meaningVal = document.getElementById('meaningInput').value.trim();
+
+            if (!wordVal || !meaningVal) {
+                showToast('Word and Meaning required');
+                return;
+            }
+
+            const newWord = {
+                word: wordVal,
+                meaning: meaningVal,
+                type: document.getElementById('typeInput').value,
+                synonyms: document.getElementById('synonymsInput').value.trim(),
+                antonyms: document.getElementById('antonymsInput').value.trim(),
+                sentence: document.getElementById('sentenceInput').value.trim(),
+                description: document.getElementById('descInput').value.trim(),
+                created: id ? getWord(id).created : Date.now(),
+                modified: Date.now()
+            };
+
+            if (id) {
+                newWord.id = id;
+                updateWord(newWord);
+                closeModal(formModal);
+            } else {
+                addWord(newWord);
+                closeModal(formModal);
+            }
+        });
+
+        deleteWordBtn.addEventListener('click', () => {
+            if (currentSelectedId && confirm('Delete this word?')) {
+                removeWord(currentSelectedId);
+            }
+        });
+
+        editWordBtn.addEventListener('click', () => {
+            closeModal(viewModal);
+            openFormModal(currentSelectedId);
+        });
+
+        function showToast(msg) {
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+    </script>
+</body>
+</html>
